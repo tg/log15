@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/inconshreveable/log15/stack"
+	"gopkg.in/stack.v1"
 )
 
 // A Logger prints its log records by writing to a Handler.
@@ -96,36 +96,37 @@ func (h *closingHandler) Close() error {
 	return h.WriteCloser.Close()
 }
 
-// CallerFileHandler returns a Handler that adds the line number and file of
-// the calling function to the context with key "caller".
-func CallerFileHandler(h Handler) Handler {
+// CallerHandler returns a Handler that adds the call site of the log function
+// to the context with key "caller". Format is an fmt.Sprint style formatting
+// string that supports the following verbs.
+//
+//    %s    source file
+//    %d    line number
+//    %n    function name
+//    %v    equivalent to %s:%d
+//
+// It accepts the '+' and '#' flags for most of the verbs as follows.
+//
+//    %+s   path of source file relative to the compile time GOPATH
+//    %#s   full path of source file
+//    %+n   import path qualified function name
+//    %+v   equivalent to %+s:%d
+//    %#v   equivalent to %#s:%d
+func CallerHandler(format string, h Handler) Handler {
 	return FuncHandler(func(r *Record) error {
-		call := stack.Call(r.CallPC[0])
-		r.Ctx = append(r.Ctx, "caller", fmt.Sprint(call))
+		r.Ctx = append(r.Ctx, "caller", fmt.Sprint(r.Call))
 		return h.Log(r)
 	})
 }
 
-// CallerFuncHandler returns a Handler that adds the calling function name to
-// the context with key "fn".
-func CallerFuncHandler(h Handler) Handler {
+// StackHandler returns a Handler that adds a stack trace to the context with
+// key "stack". The stack trace is formated as a space separated list of call
+// sites inside matching []'s. The most recent call site is listed first. Each
+// call site is formatted according to format. See the CallerHandler for the
+// list of supported formats.
+func StackHandler(format string, h Handler) Handler {
 	return FuncHandler(func(r *Record) error {
-		call := stack.Call(r.CallPC[0])
-		r.Ctx = append(r.Ctx, "fn", fmt.Sprintf("%+n", call))
-		return h.Log(r)
-	})
-}
-
-// CallerStackHandler returns a Handler that adds a stack trace to the context
-// with key "stack". The stack trace is formated as a space separated list of
-// call sites inside matching []'s. The most recent call site is listed first.
-// Each call site is formatted according to format. See the documentation of
-// log15/stack.Call.Format for the list of supported formats.
-func CallerStackHandler(format string, h Handler) Handler {
-	return FuncHandler(func(r *Record) error {
-		s := stack.Callers().
-			TrimBelow(stack.Call(r.CallPC[0])).
-			TrimRuntime()
+		s := stack.Trace().TrimBelow(r.Call).TrimRuntime()
 		if len(s) > 0 {
 			buf := &bytes.Buffer{}
 			buf.WriteByte('[')
@@ -310,9 +311,8 @@ func LazyHandler(h Handler) Handler {
 					hadErr = true
 					r.Ctx[i] = err
 				} else {
-					if cs, ok := v.(stack.Trace); ok {
-						v = cs.TrimBelow(stack.Call(r.CallPC[0])).
-							TrimRuntime()
+					if cs, ok := v.(stack.CallStack); ok {
+						v = cs.TrimBelow(r.Call).TrimRuntime()
 					}
 					r.Ctx[i] = v
 				}

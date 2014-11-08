@@ -29,7 +29,7 @@ func BenchmarkDiscard(b *testing.B) {
 
 func BenchmarkCallerFileHandler(b *testing.B) {
 	lg := New()
-	lg.SetHandler(CallerFileHandler(DiscardHandler()))
+	lg.SetHandler(CallerHandler("%v", DiscardHandler()))
 
 	for i := 0; i < b.N; i++ {
 		lg.Info("test message")
@@ -38,7 +38,7 @@ func BenchmarkCallerFileHandler(b *testing.B) {
 
 func BenchmarkCallerFuncHandler(b *testing.B) {
 	lg := New()
-	lg.SetHandler(CallerFuncHandler(DiscardHandler()))
+	lg.SetHandler(CallerHandler("%+n", DiscardHandler()))
 
 	for i := 0; i < b.N; i++ {
 		lg.Info("test message")
