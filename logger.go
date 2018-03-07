@@ -7,8 +7,8 @@ import (
 	"github.com/go-stack/stack"
 )
 
-const timeKey = "t"
-const lvlKey = "lvl"
+const timeKey = "ts"
+const lvlKey = "level"
 const msgKey = "msg"
 const errorKey = "LOG15_ERROR"
 
@@ -28,15 +28,15 @@ const (
 func (l Lvl) String() string {
 	switch l {
 	case LvlDebug:
-		return "dbug"
+		return "debug"
 	case LvlInfo:
 		return "info"
 	case LvlWarn:
 		return "warn"
 	case LvlError:
-		return "eror"
+		return "error"
 	case LvlCrit:
-		return "crit"
+		return "fatal"
 	default:
 		panic("bad level")
 	}
@@ -46,15 +46,15 @@ func (l Lvl) String() string {
 // Useful for parsing command line args and configuration files.
 func LvlFromString(lvlString string) (Lvl, error) {
 	switch lvlString {
-	case "debug", "dbug":
+	case "debug":
 		return LvlDebug, nil
 	case "info":
 		return LvlInfo, nil
 	case "warn":
 		return LvlWarn, nil
-	case "error", "eror":
+	case "error":
 		return LvlError, nil
-	case "crit":
+	case "fatal":
 		return LvlCrit, nil
 	default:
 		return LvlDebug, fmt.Errorf("Unknown level: %v", lvlString)
