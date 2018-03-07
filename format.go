@@ -137,21 +137,30 @@ func JsonFormatEx(pretty, lineSeparated bool) Format {
 	}
 
 	return FormatFunc(func(r *Record) []byte {
-		props := make(map[string]interface{})
-
-		props[r.KeyNames.Time] = r.Time
-		props[r.KeyNames.Lvl] = r.Lvl.String()
-		props[r.KeyNames.Msg] = r.Msg
-
-		for i := 0; i < len(r.Ctx); i += 2 {
-			k, ok := r.Ctx[i].(string)
-			if !ok {
-				props[errorKey] = fmt.Sprintf("%+v is not a string key", r.Ctx[i])
-			}
-			props[k] = formatJSONValue(r.Ctx[i+1])
+		js := struct {
+			Ts    time.Time              `json:"ts"`
+			Level string                 `json:"level"`
+			Msg   string                 `json:"msg"`
+			Ctx   map[string]interface{} `json:"ctx,omitempty"`
+		}{
+			Ts:    r.Time,
+			Level: r.Lvl.String(),
+			Msg:   r.Msg,
 		}
 
-		b, err := jsonMarshal(props)
+		if len(r.Ctx) > 0 {
+			js.Ctx = make(map[string]interface{})
+
+			for i := 0; i < len(r.Ctx); i += 2 {
+				k, ok := r.Ctx[i].(string)
+				if !ok {
+					js.Ctx[errorKey] = fmt.Sprintf("%+v is not a string key", r.Ctx[i])
+				}
+				js.Ctx[k] = formatJSONValue(r.Ctx[i+1])
+			}
+		}
+
+		b, err := jsonMarshal(js)
 		if err != nil {
 			b, _ = jsonMarshal(map[string]string{
 				errorKey: err.Error(),
